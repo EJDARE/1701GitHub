@@ -1,0 +1,378 @@
+// Game configuration
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600;
+const ROAD_WIDTH = 600;
+const ROAD_COLOR = 50;
+
+// Car properties
+const CAR_WIDTH = 40;
+const CAR_HEIGHT = 55;
+const CAR_SPEED = 5;
+
+// Enemy car properties
+const ENEMY_CAR_WIDTH = 40;
+const ENEMY_CAR_HEIGHT = 55;
+const ENEMY_CAR_SPEED = 8;
+
+// hedge properties
+const hedge_WIDTH = 50;
+const hedge_HEIGHT = 200;
+const hedge_SPEED = 8;
+
+// Game variables
+let playerX = GAME_WIDTH / 2;
+let playerY = GAME_HEIGHT - CAR_HEIGHT;
+let score = 0;
+let gameOver = false;
+let started = false;
+let enemyCars = [];
+let hedges = [];
+let bullets = [];
+let music;
+let deathSound;
+let EnemyCarRed;
+let EnemyCarYellow;
+let EnemyPolice;
+let playerCarSprite;
+let startVideo;
+//let gameOverVideo;
+let carSpeed = 10;
+let startMenu = true;
+let leaderboardMenu = false;
+let gameOverMenu = false;
+let highScores = [];
+let startVideoPlayed = false;
+let bulletSprite;
+
+
+
+
+function preload() {
+  music = loadSound("./js/phonk-phonk-2025-mix-313052.mp3");
+  music.setVolume(0.008); // Set the music volume to 50%
+  
+  deathSound = loadSound("./js/death-sound.mp3");
+  deathSound.setVolume(0.01); // Set the death sound effect volume to 1%
+  
+  EnemyCarRed = loadImage("./images/EnemyCarRed.png");
+  EnemyCarYellow = loadImage("./images/EnemyCarYellow.png");
+  EnemyPolice = loadImage("./images/EnemyPolice.png");
+  playerCarSprite = loadImage("./images/PlayerCar.png");
+  
+  startVideo = createVideo("./js/StartVideo.mp4");
+  startVideo.hide();
+
+  bulletSprite = loadImage('./images/bulletSprite.png');
+  
+}
+
+function setup() {
+    createCanvas(GAME_WIDTH, GAME_HEIGHT);
+    frameRate(60);
+    startVideo.loop();
+    startVideo.volume(0);
+    startVideo.attribute('onended', 'videoEnded()');
+  }
+
+function draw() {
+  if (startMenu) {
+    startMenuScreen();
+  } else if (leaderboardMenu) {
+    leaderboardScreen();
+  } else if (gameOverMenu) {
+    gameOverScreen();
+  } else {
+    gameLoop();
+  }
+}
+
+function startMenuScreen() {
+  background(0);
+  // Draw the video on the canvas rather than showing the DOM element
+  image(startVideo, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+  
+  // Draw title
+  fill(0);
+  textSize(32);
+  textStyle(BOLD);
+  text("Average BMW Driver Game R-Type Game", GAME_WIDTH / 2 - 275, GAME_HEIGHT / 2 - 100);
+  textSize(18);
+  text("Don't Crash or You Violate the Law", GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 - 70);
+  
+  // Draw credits
+  textSize(14);
+  textStyle(BOLD);
+  text("Created by Ethan Davis", GAME_WIDTH / 2 - 80, GAME_HEIGHT / 2 + 120);
+  
+  // Draw start button
+  fill(0, 255, 0); // Green
+  rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 - 25, 200, 50);
+  fill(0);
+  textSize(24);
+  textStyle(BOLD);
+  text("Start", GAME_WIDTH / 2 - 35, GAME_HEIGHT / 2);
+  
+  // Draw leaderboard button
+  fill(255, 255, 0); // Yellow
+  rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 50, 200, 50);
+  fill(0);
+  textSize(24);
+  textStyle(BOLD);
+  text("Leaderboard", GAME_WIDTH / 2 - 75, GAME_HEIGHT / 2 + 75);
+}
+
+
+function mousePressed() {
+    if (startMenu) {
+      if (GAME_WIDTH / 2 - 100 < mouseX && mouseX < GAME_WIDTH / 2 + 100 && GAME_HEIGHT / 2 - 25 < mouseY && mouseY < GAME_HEIGHT / 2 + 25) {
+        startMenu = false;
+        leaderboardMenu = false;
+        music.loop(); 
+        startVideo.hide(); // Hide the video element
+      } else if (GAME_WIDTH / 2 - 100 < mouseX && mouseX < GAME_WIDTH / 2 + 100 && GAME_HEIGHT / 2 + 50 < mouseY && mouseY < GAME_HEIGHT / 2 + 100) {
+        startMenu = false;
+        leaderboardMenu = true;
+        startVideo.hide(); // Hide the video element
+      }
+    } else if (leaderboardMenu) {
+      if (GAME_WIDTH / 2 - 100 < mouseX && mouseX < GAME_WIDTH / 2 + 100 && GAME_HEIGHT / 2 + 150 < mouseY && mouseY < GAME_HEIGHT / 2 + 200) {
+        leaderboardMenu = false;
+        startMenu = true;
+        // Don't show the video element directly, just reset it for drawing in the startMenuScreen function
+        startVideo.loop(); 
+        startVideo.volume(0);
+      }
+    }
+  }
+
+function addScoreToLeaderboard() {
+    playerName = prompt('Please enter your name:');
+    if (playerName !== null) {
+      highScores.push({ name: playerName, score: score });
+      highScores.sort((a, b) => b.score - a.score);
+      if (highScores.length > 10) {
+        highScores.pop();
+      }
+      saveHighScores();
+    }
+  }
+  
+  function saveHighScores() {
+    localStorage.setItem('highScores', JSON.stringify(highScores));
+  }
+  
+  function loadHighScores() {
+    let storedHighScores = localStorage.getItem('highScores');
+    if (storedHighScores !== null) {
+      highScores = JSON.parse(storedHighScores);
+    }
+  }
+
+function leaderboardScreen() {
+    background(135, 206, 235); // Sky blue
+    
+    // Draw title
+    fill(255);
+    textSize(32);
+    text("Leaderboard", GAME_WIDTH / 2 - 75, GAME_HEIGHT / 2 - 100);
+    textSize(24);
+    text("High Scores:", GAME_WIDTH / 2 - 75, GAME_HEIGHT / 2 - 50);
+    
+    // Draw high scores
+    for (let i = 0; i < highScores.length; i++) {
+      textSize(24);
+      text(`${i + 1}. ${highScores[i].name} - ${highScores[i].score}`, GAME_WIDTH / 2 - 150, GAME_HEIGHT / 2 + i * 30);
+    }
+    
+    // Draw back button
+    fill(255, 0, 0); // Red
+    rect(GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2 + 150, 200, 50);
+    fill(255);
+    textSize(24);
+    text("Back", GAME_WIDTH / 2 - 30, GAME_HEIGHT / 2 + 175);
+  }
+
+function gameLoop() {
+  background(135, 206, 235); // Sky blue
+  
+  // Draw road
+  fill(ROAD_COLOR);
+  rect((GAME_WIDTH - ROAD_WIDTH) / 2, 0, ROAD_WIDTH, GAME_HEIGHT);
+  
+  // Draw road lines
+  stroke(255);
+  let laneWidth = ROAD_WIDTH / 4;
+  for (let i = 0; i < GAME_HEIGHT; i += 50) {
+    line((GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth, i, (GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth, i + 20); // Lane 1
+    line((GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth * 2, i, (GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth * 2, i + 20); // Lane 2
+    line((GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth * 3, i, (GAME_WIDTH - ROAD_WIDTH) / 2 + laneWidth * 3, i + 20); // Lane 3
+  }
+  
+  // Move and draw player car
+  image(playerCarSprite, playerX, playerY, CAR_WIDTH, CAR_HEIGHT);
+  
+  // Move player car
+  if (keyIsDown(RIGHT_ARROW) && playerX < (GAME_WIDTH - ROAD_WIDTH) / 2 + ROAD_WIDTH - CAR_WIDTH) {
+    playerX += carSpeed;
+  }
+  if (keyIsDown(LEFT_ARROW) && playerX > (GAME_WIDTH - ROAD_WIDTH) / 2) {
+    playerX -= carSpeed;
+  }
+  if (keyIsDown(UP_ARROW) && playerY > 0) {
+    playerY -= carSpeed;
+  }
+  if (keyIsDown(DOWN_ARROW) && playerY < GAME_HEIGHT - CAR_HEIGHT) {
+    playerY += carSpeed;
+  }
+  
+  // Speed up and slow down
+  if (keyIsDown(87) && carSpeed < 20) {
+    carSpeed += 1;
+  }
+  if (keyIsDown(83) && carSpeed > 5) {
+    carSpeed -= 1;
+  }
+  
+  // Update and draw enemy cars
+  if (frameCount % 60 === 0) {
+    let lane = floor(random(4));
+    let newX = (GAME_WIDTH - ROAD_WIDTH) / 2 + lane * (ROAD_WIDTH / 4) + (ROAD_WIDTH / 8) - (ENEMY_CAR_WIDTH / 2);
+    let newY = -ENEMY_CAR_HEIGHT;
+    let enemySprite;
+  
+    let enemyType = random(["red", "yellow", "police"]);
+    if (enemyType === "red") {
+      enemySprite = EnemyCarRed;
+    } else if (enemyType === "yellow") {
+      enemySprite = EnemyCarYellow;
+    } else if (enemyType === "police") {
+      enemySprite = EnemyPolice;
+    }
+  
+    enemyCars.push({
+      x: newX,
+      y: newY,
+      speed: ENEMY_CAR_SPEED,
+      sprite: enemySprite,
+      draw: function() {
+        image(this.sprite, this.x, this.y, ENEMY_CAR_WIDTH, ENEMY_CAR_HEIGHT);
+      },
+      move: function() {
+        this.y += this.speed;
+        if (this.y > GAME_HEIGHT) {
+          this.y = -ENEMY_CAR_HEIGHT;
+          let lane = floor(random(4));
+          this.x = (GAME_WIDTH - ROAD_WIDTH) / 2 + lane * (ROAD_WIDTH / 4) + (ROAD_WIDTH / 8) - (ENEMY_CAR_WIDTH / 2);
+        }
+      }
+    });
+  }
+  
+  for (let enemy of enemyCars) {
+    enemy.move();
+    enemy.draw();
+  
+    // Collision detection
+    if (
+      playerX + CAR_WIDTH > enemy.x &&
+      playerX < enemy.x + ENEMY_CAR_WIDTH &&
+      playerY + CAR_HEIGHT > enemy.y &&
+      playerY < enemy.y + ENEMY_CAR_HEIGHT
+    ) {
+      deathSound.play(); // Play the death sound
+      background(255, 0, 0); // Red background on collision
+      gameOverScreen(); // Show the game over screen
+      gameOverMenu = true;
+      music.stop(); // Stop the phonk music
+      noLoop(); // Stop the game loop
+    }
+  }
+  
+  // Update and draw hedges
+  for (let hedge of hedges) {
+    hedge.move();
+    hedge.draw();
+  }
+  
+  // Update and draw bullets
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    bullets[i].move();
+    bullets[i].draw();
+
+    // Collision detection with enemy cars
+    for (let j = enemyCars.length - 1; j >= 0; j--) {
+      if (bullets[i].collidesWith(enemyCars[j])) {
+        score += 10;
+        enemyCars.splice(j, 1);
+        bullets.splice(i, 1);
+        break;
+      }
+    }
+  }
+  
+  // Draw score
+  fill(255);
+  textSize(24);
+  text(`Score: ${score}`, 10, 30);
+}
+
+function gameOverScreen() {
+    fill(255);
+    textSize(32);
+    text("You Lose!!!", GAME_WIDTH / 2 - 100, GAME_HEIGHT / 2);
+    textSize(24);
+    text("Press 'S' to try again", GAME_WIDTH / 2 - 120, GAME_HEIGHT / 2 + 40);
+  }
+
+function keyPressed() {
+  if (key === ' ') {
+    bullets.push(new Bullet(playerX, playerY));
+  }
+  if (key === 's' || key === 'S') {
+    if (gameOverMenu) {
+      gameOverMenu = false;
+      startMenu = true;
+      addScoreToLeaderboard();
+      score = 0;
+      playerX = GAME_WIDTH / 2;
+      playerY = GAME_HEIGHT - CAR_HEIGHT;
+      enemyCars = [];
+      hedges = [];
+      bullets = [];
+      loop(); // Restart the game loop
+    }
+  }
+}
+
+function videoEnded() {
+  startVideo.hide();
+  startVideo.loop(false);
+}
+
+class Bullet {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.speed = 5;
+    this.width = 30; // Add width property
+    this.height = 40; // Add height property
+  }
+  
+  move() {
+    this.y -= this.speed;
+  }
+  
+  draw() {
+    image(bulletSprite, this.x, this.y, this.width, this.height);
+  }
+
+  
+  collidesWith(enemyCar) {
+    return (
+      this.x + this.width > enemyCar.x &&
+      this.x < enemyCar.x + ENEMY_CAR_WIDTH &&
+      this.y + this.height > enemyCar.y &&
+      this.y < enemyCar.y + ENEMY_CAR_HEIGHT
+    );
+  }
+}
